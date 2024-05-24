@@ -3,46 +3,24 @@
 use Endroid\QrCode\Color\Color;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\SvgWriter;
+use function Livewire\Volt\{layout, with, usesPagination};
+
+layout('layouts.app');
+
+usesPagination();
+
+with([
+    "qrs" => fn() => auth()->user()->qr_codes()->latest()->paginate(5)
+]);
 
 
-new
-#[\Livewire\Attributes\Layout('layouts.app')]
-class extends \Livewire\Volt\Component {
-    public \Illuminate\Support\Collection $qr_codes;
-
-    public function mount(): void
-    {
-        $qr_codes = auth()->user()->qr_codes()->latest()->limit(10)->get();
 
 
-        $qrs = $qr_codes->map(function ($qr) {
-            $qrCode = QrCode::create($qr->data)
-                ->setEncoding(new \Endroid\QrCode\Encoding\Encoding('UTF-8'))
-                ->setErrorCorrectionLevel(\Endroid\QrCode\ErrorCorrectionLevel::High)
-                ->setSize(80)
-                ->setMargin(5)
-                ->setForegroundColor(new Color(0, 0, 0))
-                ->setBackgroundColor(new Color(255, 255, 255));
+$deleteQr = function (\App\Models\QrCode $qr) {
+    $qr->delete();
 
-
-            $label = \Endroid\QrCode\Label\Label::create($qr->name)
-                ->setTextColor(new Color(255, 0, 0));
-
-            $writer = new SvgWriter([
-                SvgWriter::WRITER_OPTION_EXCLUDE_XML_DECLARATION => true
-            ]);
-
-
-            $qr['result'] = $writer->write($qrCode, null, $label);
-            return $qr;
-        });
-
-
-        $this->qr_codes = $qrs;
-
-
-    }
 }
+
 ?>
 
 <x-slot name="header">
@@ -56,27 +34,56 @@ class extends \Livewire\Volt\Component {
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
 
             <div class="p-6 text-gray-900">
-                <form action="{{ route('qrs.store') }}" method="POST">
-                    @csrf
-                    @method('POST')
-                    <x-text-input type="text" name="name"/>
-                    <select name="type" class="rounded">
-                        <option value="link">Link</option>
-                        <option value="v_card">vCard</option>
-                        <option value="whatsapp">WhatsApp</option>
-                    </select>
+                <livewire:components.create-qr/>
 
-                    <x-text-input type="text" name="data"/>
-
-                    <x-primary-button type="submit">Create QR</x-primary-button>
-
-                </form>
-
-
-                @foreach($this->qr_codes as $qr_code)
-                    <livewire:qr_code :qr="$qr_code"/>
-
-                @endforeach
+                <div class="px-4 sm:px-6 lg:px-8 mt-6">
+                    <div class="sm:flex sm:items-center">
+                        <div class="sm:flex-auto">
+                            <h1 class="text-base font-semibold leading-6 text-gray-900">QR Codes</h1>
+                            <p class="mt-2 text-sm text-gray-700">A list of all your QR Codes</p>
+                        </div>
+                        <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+                            <button type="button"
+                                    class="block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                                New
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-8 flow-root">
+                        <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                            <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                                <table class="min-w-full divide-y divide-gray-300">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col"
+                                            class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">
+                                            Name
+                                        </th>
+                                        <th scope="col"
+                                            class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Type
+                                        </th>
+                                        <th scope="col"
+                                            class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status
+                                        </th>
+                                        <th scope="col"
+                                            class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Data
+                                        </th>
+                                        <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-0">
+                                            <span class="sr-only">Edit</span>
+                                        </th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                    @foreach($qrs as $qr)
+                                        <livewire:components.qr_code :$qr :key="$qr->id"/>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {{ $qrs->links() }}
+                </div>
 
 
             </div>
